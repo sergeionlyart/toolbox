@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Динамическая страница из JSON</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f9f9f9;
+        }
+
+        .content-block {
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/docx@7.8.2/build/index.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+    <button onclick="exportToDocx()">Сохранить в DOCX</button>
+    <div id="content"></div>
+
+    <script>
+        async function loadAndRender(url) {
+            const response = await fetch(url);
+            const data = await response.json();
+            const container = document.getElementById('content');
+
+            // Обработка каждой страницы
+            data.pages.forEach(page => {
+                // Замена ссылок на изображения из markdown на реальные картинки из images
+                let htmlContent = page.markdown.replace(/!\[.*?\]\((.*?)\)/g, (match, imgId) => {
+                    const image = page.images.find(img => img.id === imgId.trim());
+                    return image ? `<img src="${image.image_base64}" alt="${imgId}">` : '';
+                });
+
+                // Разделение на параграфы
+                htmlContent.split('\n').forEach(paragraph => {
+                    if (paragraph.trim()) {
+                        const p = document.createElement('p');
+                        p.className = 'content-block';
+                        p.setAttribute('contenteditable', 'true');
+                        p.innerHTML = paragraph;
+                        container.appendChild(p);
+                    }
+                });
+            });
+        }
+
+        function exportToDocx() {
+            const doc = new docx.Document();
+            const paragraphs = document.querySelectorAll('.content-block');
+
+            paragraphs.forEach(paragraph => {
+                doc.addSection({
+                    children: [
+                        new docx.Paragraph(paragraph.innerText)
+                    ],
+                });
+            });
+
+            docx.Packer.toBlob(doc).then(blob => {
+                saveAs(blob, 'document.docx');
+            });
+        }
+
+        // Укажите корректный URL вашего JSON файла
+        // Исправленный путь
+        loadAndRender('docs/JSON_data/Скан согл 120_250409_144536.json');
+    </script>
+</body>
+</html>
